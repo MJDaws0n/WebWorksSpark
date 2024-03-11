@@ -316,6 +316,8 @@ function decodeValue(value) {
     var currentVar = '';
     var currentString = '';
     var pastType = 'none';
+    var currentNum = '';
+    var type = '';
 
     var optString = '';
     // Optimise the string
@@ -342,7 +344,6 @@ function decodeValue(value) {
             managedString = true
         }
     }
-
     // Processing the value
     for (let i = 0; i < optString.length; i++) {
         var currentChar = optString[i];
@@ -360,24 +361,54 @@ function decodeValue(value) {
                 // End the variable
                 pastType = 'variable';
 
-                // Check if the variable is declared
-                var placeName;
-                variables.forEach(variable => {
-                    if(variable.name == '"'+currentVar+'"'){
-                        placeName = variable.identification;
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    console.log(getFunction(currentVar, true));
+                    console.log(currentVar);
+                    // We are getting the functions inside functions working
+                    // finalValue += '"Hello"';
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
                     }
-                });
 
-                if(!placeName){
-                    createError('Unknown variable: '+currentVar );
+                    if(varType != '"'+type+'"' && type != ''){
+                        createError(`Cannot mix data type. Initialy "${type}" now ${varType}`);
+                    }
+                    type = varType;
+
+                    finalValue += placeName;
                 }
-
-                finalValue += placeName;
                 
                 if(optString[i+1]){
                     finalValue += '+';
                 }
                 currentVar = '';
+            }
+
+            // Number management
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '+';
+                }
+
+                currentNum = '';
             }
         }
 
@@ -400,9 +431,18 @@ function decodeValue(value) {
             }
         }
         
+        // Number managment
+        if(charIsNumber(currentChar) && !inString && currentVar == ''){
+            currentNum += currentChar;
+            if(type != 'number' && type != ''){
+                createError(`Cannot mix data type. Initialy "${type}" now number`);
+            }
+            type = 'number';
+        }
+
         // Variable management
         if(!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != ''){
-            // We are starting a variable
+            // We are in a variable
             currentVar += currentChar;
         }
 
@@ -413,6 +453,10 @@ function decodeValue(value) {
             if(pastType == 'string'){ // Some optimisation can be done here
                 finalValue = finalValue.slice(0, -1);
             }
+            if(type != 'string' && type != ''){
+                createError(`Cannot mix data type. Initialy "${type}" now "string"`);
+            }
+            type = 'string';
             inString = true;
             managedString = true
         }
@@ -432,6 +476,47 @@ function decodeValue(value) {
         // Push the character
         if(inString && currentChar != "'"){
             currentString += currentChar;
+        }
+    }
+
+    finish();
+    function finish(){
+        if(currentVar != ''){ // We have a current variable
+            // End the variable
+            pastType = 'variable';
+
+            // Check if the variable is declared
+            var placeName;
+            var varType;
+            variables.forEach(variable => {
+                if(variable.name == '"'+currentVar+'"'){
+                    placeName = variable.identification;
+                    varType = variable.type;
+                }
+            });
+
+            if(!placeName){
+                createError('Unknown variable: '+currentVar );
+            }
+
+            if(varType != '"'+type+'"' && type != ''){
+                createError(`Cannot mix data type. Initialy "${type}" now ${varType}`);
+            }
+            type = varType;
+
+            finalValue += placeName;
+            
+            currentVar = '';
+        }
+
+        // Number management
+        if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+            // End the variable
+            pastType = 'number';
+
+            finalValue += currentNum;
+
+            currentNum = '';
         }
     }
 

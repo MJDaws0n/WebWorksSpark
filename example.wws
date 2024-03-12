@@ -1,4 +1,0 @@
-def('name', 'string', 'Max');
-def('number', 'int', 12+12);
-
-log('Start -> '+str(12)+' <- end');

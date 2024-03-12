@@ -104,19 +104,19 @@ function appendFunction(action, args, returnValue) {
         finalOutput += 'out(' + decodeValue(args[0]) + ');';
     }
     if (action == 'str') {
-        finalOutput += 'std::__cxx11::to_string(' + decodeValue(args[0]) + ');';
+        finalOutput += 'numToString(' + decodeValue(args[0]) + ');';
     }
     if (action == 'def') {
         const validation = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
-        if(!validation.test(decodeValue(args[0]).slice(1, -1))){
-            createError('Variable name contains or begins with illegal characters: ' + decodeValue(args[0]).slice(1, -1));
+        if(!validation.test(decodeValue(args[0], true).slice(1, -1))){
+            createError('Variable name contains or begins with illegal characters: ' + args[0]);
         }
         variables.push(
             {
-                name: decodeValue(args[0]),
+                name: decodeValue(args[0], true),
                 identification: 'VARIBALE_' + makeVariableID(),
-                type: decodeValue(args[1]),
-                value: decodeValue(args[2])
+                type: decodeValue(args[1], true),
+                value: decodeValue(args[2], true)
             }
         );
     }
@@ -247,6 +247,10 @@ function getFunctionArgs(string) {
     var currentOperation = '';
     var currentString = '';
     var array = [];
+
+    var bracketOpenCount = 0;
+    var bracketClosedCount = 0;
+
     for (let i = 0; i < string.length; i++) {
         var currentChar = string[i];
         if (!inString && !inBrackets && currentChar == ",") {
@@ -276,9 +280,11 @@ function getFunctionArgs(string) {
         if (inBrackets && currentChar == ")") {
             inBrackets = false;
             notMovedBracket = false;
+            bracketClosedCount++;
         }
         if (!inBrackets && currentChar == "(" && notMovedBracket) {
             inBrackets = true;
+            bracketOpenCount++;
         }
         currentOperation += currentChar;
     }
@@ -310,7 +316,10 @@ function makeVariableID() {
     }
     return result;
 }
-function decodeValue(value) {
+function decodeValue(value,) {
+    if(!value){
+        createError('No value set to de-code.');
+    }
     var finalValue = '';
     var inString = false;
     var currentVar = '';
@@ -318,6 +327,10 @@ function decodeValue(value) {
     var pastType = 'none';
     var currentNum = '';
     var type = '';
+    var inFunction = false;
+
+    var bracketOpenCount = 0;
+    var bracketClosedCount = 0;
 
     var optString = '';
     // Optimise the string
@@ -349,7 +362,7 @@ function decodeValue(value) {
         var currentChar = optString[i];
 
         // Manage the + symbol
-        if(currentChar == '+'){
+        if(currentChar == '+' && !inFunction && !inString){
             if(optString[i-1] && optString[i-1] == "'" && optString[i+1] && optString[i+1] != "'"){// Past was a string and we have another set to deal with that is not a string
                 finalValue += '+';
             }
@@ -379,8 +392,8 @@ function decodeValue(value) {
                         createError('Unknown variable: '+currentVar );
                     }
 
-                    if(varType != '"'+type+'"' && type != ''){
-                        createError(`Cannot mix data type. Initialy "${type}" now ${varType}`);
+                    if(varType != type && type != ''){
+                        createError(`Cannot mix data type. Initialy ${type} now ${varType}`);
                     }
                     type = varType;
 
@@ -426,9 +439,8 @@ function decodeValue(value) {
                 return false;
             }
         }
-        // console.log((charIsNumber(currentChar) ) && !inString && currentVar == '');
         // Number managment
-        if((charIsNumber(currentChar) || (currentChar == '.' && optString[i-1] && optString[i+1] && charIsNumber(optString[i-1]) && charIsNumber(optString[i+1]))) && !inString && currentVar == ''){
+        if((charIsNumber(currentChar) || (currentChar == '.' && optString[i-1] && optString[i+1] && charIsNumber(optString[i-1]) && charIsNumber(optString[i+1]))) && !inString && currentVar == '' && !inFunction){
             currentNum += currentChar;
             if(type != '"number"' && type != ''){
                 createError(`Cannot mix data type. Initialy "${type}" now number`);
@@ -440,11 +452,31 @@ function decodeValue(value) {
         if(!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "."){
             // We are in a variable
             currentVar += currentChar;
+
+            if(currentChar == '(' && inFunction){
+                // We are already in a function but have a bracket
+                bracketOpenCount++;
+            }
+            if(currentChar == ')' && inFunction){
+                // We are already in a function but have a bracket
+                bracketClosedCount++;
+
+                if(bracketOpenCount == bracketClosedCount){
+                    // We need to end end it, cause it's all over, wow, that was probably a long chain of functions that I don't even want to think about
+                    inFunction = false;
+                }
+            }
+
+            if(currentChar == '(' && !inFunction){
+                // We are now inside a function
+                inFunction = true;
+                bracketOpenCount++;
+            }
         }
 
         // String management
         var managedString = false;
-        if(!inString && currentChar == "'"){
+        if(!inString && currentChar == "'" && !inFunction){
             // Starting a new string
             if(pastType == 'string'){ // Some optimisation can be done here
                 finalValue = finalValue.slice(0, -1);
@@ -457,7 +489,7 @@ function decodeValue(value) {
             managedString = true
         }
 
-        if(inString && currentChar == "'" && !managedString){
+        if(inString && currentChar == "'" && !managedString && !inFunction){
             // Ending a string
             inString = false;
             if(pastType != 'string'){ // Some optimisation can be done here
@@ -481,27 +513,30 @@ function decodeValue(value) {
             // End the variable
             pastType = 'variable';
 
-            // Check if the variable is declared
-            var placeName;
-            var varType;
-            variables.forEach(variable => {
-                if(variable.name == '"'+currentVar+'"'){
-                    placeName = variable.identification;
-                    varType = variable.type;
+            if(currentVar.includes('(') && currentVar.includes(')')){
+                // Hang on, this is not a variable, it's a function
+                finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+            } else{
+                var placeName;
+                var varType;
+                variables.forEach(variable => {
+                    if(variable.name == '"'+currentVar+'"'){
+                        placeName = variable.identification;
+                        varType = variable.type;
+                    }
+                });
+
+                if(!placeName){
+                    createError('Unknown variable: '+currentVar );
                 }
-            });
 
-            if(!placeName){
-                createError('Unknown variable: '+currentVar );
+                if(varType != type && type != ''){
+                    createError(`Cannot mix data type. Initialy ${type} now ${varType}`);
+                }
+                type = varType;
+
+                finalValue += placeName;
             }
-
-            if(varType != '"'+type+'"' && type != ''){
-                createError(`Cannot mix data type. Initialy "${type}" now ${varType}`);
-            }
-            type = varType;
-
-            finalValue += placeName;
-            
             currentVar = '';
         }
 
@@ -557,7 +592,35 @@ function compile() {
 // It's not suggested to edit this file
 #include <iostream>
 #include <string>
-${variablesCode} void out(const std::string& message){std::cout << message;} int main(){${finalCode}return 0;}`;
+#include <sstream>
+#include <iomanip>
+void out(const std::string& message) {
+    std::cout << message;
+}
+std::string numToString(double num) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(10) << num; // Corrected: use num instead of value
+    std::string input = oss.str();
+    
+    std::string result;
+    for (int i = input.size() - 1; i >= 0; --i) {
+        if (input[i] == '0' || input[i] == '.') {
+            // If the character is '0' or '.', skip it.
+            continue;
+        } else {
+            // If it's any other character, break the loop.
+            result = input.substr(0, i + 1);
+            break;
+        }
+    }
+    return result; // Added a semicolon here
+}
+${variablesCode}
+
+int main(){
+    ${finalCode}
+    return 0;
+}`;
     fs.writeFile(__dirname+'/build.cpp', compiledCode, (err) => {
         if (err) {
             createError('Error compiling to file:', err);
@@ -602,7 +665,6 @@ ${variablesCode} void out(const std::string& message){std::cout << message;} int
         }
     });
 }
-
 function fullDir(str) {
     // Check if the string has at least two characters
     if (str.length >= 2) {

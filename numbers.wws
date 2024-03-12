@@ -1,0 +1,5 @@
+def('numberOne', 'number', 10);
+def('numberTwo', 'number', 15);
+def('result', 'number', numberOne + numberTwo);
+
+log(str(numberOne) + ' + ' + str(numberTwo) + ' = ' + str(numberOne + numberTwo));

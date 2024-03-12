@@ -593,7 +593,7 @@ int main() {
                     } else{
                         const { exec } = require('child_process');
 
-                        const command = `"${__dirname}/mingw64/bin/g++.exe" "${__dirname}/build.cpp" -o "${outputFile}"`;
+                        const command = `"${__dirname}/mingw64/bin/g++.exe" "${__dirname}/build.cpp" -o "${outputFile}" -static -static-libgcc -static-libstdc++`;
         
                         console.log('Building...');
         

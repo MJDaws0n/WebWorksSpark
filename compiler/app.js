@@ -126,7 +126,7 @@ function appendFunction(action, args, returnValue) {
         variables.forEach((variable) => {
             if (variable.name == decodeValue(args[0])) {
                 // Modify the variable
-                finalOutput += variable.identification + '=' + decodeValue(args[1]).slice(1, -1) + ';';
+                finalOutput += variable.identification + '=' + decodeValue(args[1]) + ';';
                 found = true;
             }
         })
@@ -360,14 +360,10 @@ function decodeValue(value) {
             if(currentVar != ''){ // We have a current variable
                 // End the variable
                 pastType = 'variable';
-
                 
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
-                    console.log(getFunction(currentVar, true));
-                    console.log(currentVar);
-                    // We are getting the functions inside functions working
-                    // finalValue += '"Hello"';
+                    finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
                 } else{
                     // Check if the variable is declared
                     var placeName;
@@ -430,18 +426,18 @@ function decodeValue(value) {
                 return false;
             }
         }
-        
+        // console.log((charIsNumber(currentChar) ) && !inString && currentVar == '');
         // Number managment
-        if(charIsNumber(currentChar) && !inString && currentVar == ''){
+        if((charIsNumber(currentChar) || (currentChar == '.' && optString[i-1] && optString[i+1] && charIsNumber(optString[i-1]) && charIsNumber(optString[i+1]))) && !inString && currentVar == ''){
             currentNum += currentChar;
-            if(type != 'number' && type != ''){
+            if(type != '"number"' && type != ''){
                 createError(`Cannot mix data type. Initialy "${type}" now number`);
             }
-            type = 'number';
+            type = '"number"';
         }
 
         // Variable management
-        if(!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != ''){
+        if(!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "."){
             // We are in a variable
             currentVar += currentChar;
         }
@@ -453,10 +449,10 @@ function decodeValue(value) {
             if(pastType == 'string'){ // Some optimisation can be done here
                 finalValue = finalValue.slice(0, -1);
             }
-            if(type != 'string' && type != ''){
-                createError(`Cannot mix data type. Initialy "${type}" now "string"`);
+            if(type != '"string"' && type != ''){
+                createError(`Cannot mix data type. Initialy ${type} now string`);
             }
-            type = 'string';
+            type = '"string"';
             inString = true;
             managedString = true
         }
@@ -539,12 +535,8 @@ function compile() {
             variablesCode += `std::string ${variable.identification}=${variable.value};`;
             made = true;
         }
-        if (variableType == 'int') {
-            variablesCode += `int ${variable.identification}=${variable.value};`;
-            made = true;
-        }
-        if (variableType == 'float') {
-            variablesCode += `float ${variable.identification}=${variable.value}f;`;
+        if (variableType == 'number') {
+            variablesCode += `double ${variable.identification}=${variable.value};`;
             made = true;
         }
         if (variableType == 'array') {
@@ -561,23 +553,11 @@ function compile() {
 
     const compiledCode =
 `// \u00A9 WebWorks Spark
-// This is a de-compiled c++ version of your program
+// This is a c++ version of your program
 // It's not suggested to edit this file
-
 #include <iostream>
 #include <string>
-
-// Variables
-${variablesCode}
-
-void out(const std::string& message) {
-    std::cout << message;
-}
-
-int main() {
-    ${finalCode}
-    return 0;
-}`;
+${variablesCode} void out(const std::string& message){std::cout << message;} int main(){${finalCode}return 0;}`;
     fs.writeFile(__dirname+'/build.cpp', compiledCode, (err) => {
         if (err) {
             createError('Error compiling to file:', err);

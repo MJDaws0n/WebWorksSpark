@@ -14,4 +14,4 @@ npm i
 ```
 This will require nodeJS and NPM to be installed.
 
-Then, procceed to download mingw from [here](https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/). Unzip the file and add it to the `./compiler/` folder. Ensure the file is called `mingw64` exactly and inside that folder you can see the `bin` folder.
+Then, procceed to download mingw from [here](https://winlibs.com/#download-release). Unzip the file and add it to the `./compiler/` folder. Ensure the file is called `mingw64` exactly and inside that folder you can see the `bin` folder.

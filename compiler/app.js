@@ -376,8 +376,11 @@ function decodeValue(value,) {
                 
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
-                    console.log(currentVar);
-                    finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                    }
                 } else{
                     // Check if the variable is declared
                     var placeName;
@@ -421,6 +424,49 @@ function decodeValue(value,) {
                 currentNum = '';
             }
         }
+        // Manage the * symbol
+        if(currentChar == '*' && !inFunction && !inString){
+            if(type != '"number"' && type != ''){
+                createError('Cannot multiply '+type);
+            }
+
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '*';
+                }
+
+                currentNum = '';
+            }
+
+            currentChar == '';
+        }
+        // Manage the - symbol
+        if(currentChar == '-' && !inFunction && !inString){
+            console.log('In number');
+            if(type != '"number"' && type != ''){
+                createError('Cannot minus '+type);
+            }
+
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '-';
+                }
+
+                currentNum = '';
+            }
+
+            currentChar == '';
+        }
 
         function charIsNumber(char){
             if(char && (
@@ -449,10 +495,14 @@ function decodeValue(value,) {
             type = '"number"';
         }
 
+        // console.log(currentChar);
+
         // Variable management
-        if((!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != ".") || inFunction){
+        if((!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-') || inFunction){
             // We are in a variable
             currentVar += currentChar;
+
+            var firstTimeFunctCheck = false;
 
             if(currentChar == '(' && inFunction){
                 // We are already in a function but have a bracket
@@ -471,6 +521,7 @@ function decodeValue(value,) {
             if(currentChar == '(' && !inFunction){
                 // We are now inside a function
                 inFunction = true;
+                firstTimeFunctCheck = true;
                 bracketOpenCount++;
             }
         }
@@ -516,8 +567,11 @@ function decodeValue(value,) {
 
             if(currentVar.includes('(') && currentVar.includes(')')){
                 // Hang on, this is not a variable, it's a function
-                console.log(currentVar);
-                finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                    finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')';
+                } else{
+                    finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                }
             } else{
                 var placeName;
                 var varType;

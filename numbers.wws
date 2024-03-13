@@ -1,3 +1,3 @@
 def('number', 'number', 1);
 
-log(str(number+2+number+69420));
+log(str( 2 - 2));

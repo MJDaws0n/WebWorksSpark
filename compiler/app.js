@@ -376,6 +376,7 @@ function decodeValue(value,) {
                 
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
+                    console.log(currentVar);
                     finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
                 } else{
                     // Check if the variable is declared
@@ -449,7 +450,7 @@ function decodeValue(value,) {
         }
 
         // Variable management
-        if(!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "."){
+        if((!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != ".") || inFunction){
             // We are in a variable
             currentVar += currentChar;
 
@@ -515,6 +516,7 @@ function decodeValue(value,) {
 
             if(currentVar.includes('(') && currentVar.includes(')')){
                 // Hang on, this is not a variable, it's a function
+                console.log(currentVar);
                 finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
             } else{
                 var placeName;

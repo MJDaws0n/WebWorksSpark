@@ -1,5 +1,3 @@
-def('numberOne', 'number', 10);
-def('numberTwo', 'number', 15);
-def('result', 'number', numberOne + numberTwo);
+def('number', 'number', 1);
 
-log(str(numberOne) + ' + ' + str(numberTwo) + ' = ' + str(numberOne + numberTwo));
+log(str(number+2+number+69420));

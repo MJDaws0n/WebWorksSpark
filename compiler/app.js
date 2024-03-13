@@ -599,13 +599,16 @@ void out(const std::string& message) {
 }
 std::string numToString(double num) {
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(10) << num; // Corrected: use num instead of value
+    oss << std::fixed << std::setprecision(10) << num;
     std::string input = oss.str();
     
     std::string result;
     for (int i = input.size() - 1; i >= 0; --i) {
         if (input[i] == '0' || input[i] == '.') {
-            // If the character is '0' or '.', skip it.
+            if(input[i] == '.'){
+                result = input.substr(0, i);
+                break; 
+            }
             continue;
         } else {
             // If it's any other character, break the loop.
@@ -613,7 +616,7 @@ std::string numToString(double num) {
             break;
         }
     }
-    return result; // Added a semicolon here
+    return result;
 }
 ${variablesCode}
 

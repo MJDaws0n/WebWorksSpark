@@ -450,9 +450,9 @@ function decodeValue(value,) {
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
                     if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
-                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')';
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')*';
                     } else{
-                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'*';
                     }
                 } else{
                     // Check if the variable is declared
@@ -507,9 +507,9 @@ function decodeValue(value,) {
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
                     if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
-                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')';
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')-';
                     } else{
-                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'-';
                     }
                 } else{
                     // Check if the variable is declared
@@ -539,7 +539,6 @@ function decodeValue(value,) {
 
             currentChar == '';
         }
-
         // Manage the / symbol
         if(currentChar == '/' && !inFunction && !inString){
             if(type != '"number"' && type != ''){
@@ -566,9 +565,9 @@ function decodeValue(value,) {
                 if(currentVar.includes('(') && currentVar.includes(')')){
                     // Hang on, this is not a variable, it's a function
                     if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
-                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')';
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')/';
                     } else{
-                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1);
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'/';
                     }
                 } else{
                     // Check if the variable is declared
@@ -626,8 +625,6 @@ function decodeValue(value,) {
             }
             type = '"number"';
         }
-
-        // console.log(currentChar);
 
         // Variable management
         if((!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-' && currentChar != '/') || inFunction){

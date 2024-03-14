@@ -1,3 +1,3 @@
 def('MATHS_pi', 'number', 3.14159265359);
 
-log(str( MATHS_pi - 1 - MATHS_pi + ( 1 + 1) - (10 / 5) + 2));
+log(str( MATHS_pi - 1 - MATHS_pi + ( ( 10 * 10) + 1) * (10 / 5) + 2));

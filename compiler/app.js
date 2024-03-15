@@ -950,6 +950,9 @@ void out(const std::string& message) {
 void out(bool value) {
     std::cout << (value ? "true" : "false");
 }
+void out(int value) {
+    std::cout << value;
+}
 std::string numToString(double num) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(10) << num;

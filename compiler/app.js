@@ -27,7 +27,10 @@ if (fullDir(process.argv[3])){
     outputFile = process.cwd()+'/'+process.argv[3];
 }
 
-const debug = false;
+var debug = false;
+if(process.argv[4] && process.argv[4] == 'debug'){
+    debug = true;
+}
 
 if (debug) {
     console.log('Debug mode active');
@@ -45,6 +48,8 @@ let knownFunctions = [
     'str', // Casting to a string
 ];
 
+let conditions = []
+
 let variables = []
 
 if(!fatalError){
@@ -61,6 +66,32 @@ if(!fatalError){
     }
 }
 
+function createCondition(contition){
+    function makeID(){
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < 30) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
+        }
+        if (conditions.some(condition => condition.identification === 'CONDITION_' + result)) {
+            return makeID(); // Regenerate if ID already exists
+        }
+        return result;
+    }
+
+    const id = 'CONDITION_' + makeID();
+
+    conditions.push(
+        {
+            value: contition,
+            identification: id
+        }
+    );
+    return id;
+}
 function getFunction(operation, returnValue) {
     if (!functionValidator(operation)) {
         return;
@@ -111,6 +142,18 @@ function appendFunction(action, args, returnValue) {
         if(!validation.test(decodeValue(args[0], true).slice(1, -1))){
             createError('Variable name contains or begins with illegal characters: ' + args[0]);
         }
+
+        // Check if it already exists
+        var found = false;
+        variables.forEach((variable) => {
+            if (variable.name == decodeValue(args[0])) {
+                found = true;
+            }
+        })
+        if (found) {
+            createError('Variable already used: ' + args[0]);
+        }
+
         variables.push(
             {
                 name: decodeValue(args[0], true),
@@ -120,18 +163,17 @@ function appendFunction(action, args, returnValue) {
             }
         );
     }
-
     if (action == 'mod') {
         var found = false;
         variables.forEach((variable) => {
             if (variable.name == decodeValue(args[0])) {
                 // Modify the variable
-                finalOutput += variable.identification + '=' + decodeValue(args[1]) + ';';
+                finalOutput += variable.identification + '=' + args[1] + ';';
                 found = true;
             }
         })
         if (!found) {
-            createError('Variable undefined: ' + decodeValue(args[0]).slice(1, -1));
+            createError('Variable undefined: ' + args[0]);
         }
     }
 
@@ -332,6 +374,8 @@ function decodeValue(value,) {
     var bracketOpenCount = 0;
     var bracketClosedCount = 0;
 
+    var isConditional = false;
+
     var optString = '';
     // Optimise the string
     for (let i = 0; i < value.length; i++) {
@@ -424,6 +468,9 @@ function decodeValue(value,) {
                 currentNum = '';
             }
         }
+
+        // Numbers
+
         // Manage the * symbol
         if(currentChar == '*' && !inFunction && !inString){
             if(type != '"number"' && type != ''){
@@ -469,7 +516,7 @@ function decodeValue(value,) {
                         createError('Unknown variable: '+currentVar );
                     }
 
-                    if(varType != '"number"' && type != ''){
+                    if(varType != '"number"'){
                         createError(`Cannot multiply by a ${varType}`);
                     }
                     type = varType;
@@ -526,7 +573,7 @@ function decodeValue(value,) {
                         createError('Unknown variable: '+currentVar );
                     }
 
-                    if(varType != '"number"' && type != ''){
+                    if(varType != '"number"'){
                         createError(`Cannot minus a ${varType}`);
                     }
                     type = varType;
@@ -542,7 +589,7 @@ function decodeValue(value,) {
         // Manage the / symbol
         if(currentChar == '/' && !inFunction && !inString){
             if(type != '"number"' && type != ''){
-                createError('Cannot minus '+type);
+                createError('Cannot divide '+type);
             }
 
             if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
@@ -584,12 +631,117 @@ function decodeValue(value,) {
                         createError('Unknown variable: '+currentVar );
                     }
 
-                    if(varType != '"number"' && type != ''){
+                    if(varType != '"number"'){
                         createError(`Cannot divide by a ${varType}`);
                     }
                     type = varType;
 
                     finalValue += placeName+'/';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+
+        // Conditions
+
+        // Manage the == symbol
+        if(currentChar == '=' && optString[i-1] == '=' && !inFunction && !inString){
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '==';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')==';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'==';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+                    type = varType;
+
+                    finalValue += placeName+'==';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the && symbol
+        if(currentChar == '&' && optString[i-1] == '&' && !inFunction && !inString){
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '&&';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')&&';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'&&';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+                    type = varType;
+
+                    finalValue += placeName+'&&';
                 }
             }
 
@@ -627,7 +779,8 @@ function decodeValue(value,) {
         }
 
         // Variable management
-        if((!inString && !charIsNumber(currentChar) && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-' && currentChar != '/') || inFunction){
+        if(((!inString && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-' && currentChar != '/' && currentChar != '=' && currentChar != '&') 
+        && (!charIsNumber(currentChar) || currentVar != '')) || inFunction){
             // We are in a variable
             currentVar += currentChar;
 
@@ -736,7 +889,11 @@ function decodeValue(value,) {
         }
     }
 
-    return finalValue.replace(/\n/g,'\\n').replace(/\r/g,'');
+    if(isConditional){
+        return createCondition(finalValue.replace(/\n/g,'\\n').replace(/\r/g,''))+'()';
+    } else{
+        return finalValue.replace(/\n/g,'\\n').replace(/\r/g,'');
+    }
 }
 function compile() {
     if (fatalError) {
@@ -747,7 +904,7 @@ function compile() {
     // Variables
     var variablesCode = '';
 
-    // Manage string variables
+    // Manage variables
     variables.forEach((variable) => {
         var made = false;
         const variableType = variable.type.slice(1, -1);
@@ -771,6 +928,14 @@ function compile() {
         }
     })
 
+    // Conditions
+    var conditionCode = '';
+
+    // Manage string variables
+    conditions.forEach((condition) => {
+        conditionCode += `bool ${condition.identification}(){if(${condition.value}){return true;}return false;}`;
+    })
+
     const compiledCode =
 `// \u00A9 WebWorks Spark
 // This is a c++ version of your program
@@ -781,6 +946,9 @@ function compile() {
 #include <iomanip>
 void out(const std::string& message) {
     std::cout << message;
+}
+void out(bool value) {
+    std::cout << (value ? "true" : "false");
 }
 std::string numToString(double num) {
     std::ostringstream oss;
@@ -804,6 +972,7 @@ std::string numToString(double num) {
     return result;
 }
 ${variablesCode}
+${conditionCode}
 
 int main(){
     ${finalCode}

@@ -937,49 +937,26 @@ function compile() {
     })
 
     const compiledCode =
-`// \u00A9 WebWorks Spark
-// This is a c++ version of your program
-// It's not suggested to edit this file
+`// \u00A9 WebWorks - WebWorks Spark
+// https://webworkshub.online/spark
+// By MJDawson
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <iomanip>
-void out(const std::string& message) {
-    std::cout << message;
-}
-void out(bool value) {
-    std::cout << (value ? "true" : "false");
-}
-void out(int value) {
-    std::cout << value;
-}
-std::string numToString(double num) {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(10) << num;
-    std::string input = oss.str();
-    
-    std::string result;
-    for (int i = input.size() - 1; i >= 0; --i) {
-        if (input[i] == '0' || input[i] == '.') {
-            if(input[i] == '.'){
-                result = input.substr(0, i);
-                break; 
-            }
-            continue;
-        } else {
-            // If it's any other character, break the loop.
-            result = input.substr(0, i + 1);
-            break;
-        }
-    }
-    return result;
-}
+// Logging
+void out(const std::string& message) {std::cout << message;}
+void out(bool value) {std::cout << (value ? "true" : "false");}
+void out(int value) {std::cout << value;}
+// Casting
+std::string numToString(double num) {std::ostringstream oss;oss << std::fixed << std::setprecision(10) << num;std::string input = oss.str();std::string result;for (int i = input.size() - 1; i >= 0; --i) {if (input[i] == '0' || input[i] == '.') {if(input[i] == '.'){result = input.substr(0, i);break; }continue;} else {result = input.substr(0, i + 1);break;}}return result;}
+// Variables
 ${variablesCode}
+// Conditions
 ${conditionCode}
-
+// Main
 int main(){
-    ${finalCode}
-    return 0;
+    ${finalCode}return 0;
 }`;
     fs.writeFile(__dirname+'/build.cpp', compiledCode, (err) => {
         if (err) {

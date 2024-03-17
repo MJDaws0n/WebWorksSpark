@@ -1,2 +1,0 @@
-def('test', 'number', 1);
-log(12+24363);

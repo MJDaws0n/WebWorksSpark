@@ -44,8 +44,11 @@ let knownFunctions = [
     'def', // Creating variables
     'mod', // Updating variables
     'log', // Logging to the console
-    'num', // Dealing with any numbers
+    'num', // Casting strings to numbers
     'str', // Casting to a string
+    'if', // Conditions
+    'input', // Text input
+    'vNum' // Valid number
 ];
 
 let conditions = []
@@ -54,7 +57,7 @@ let variables = []
 
 if(!fatalError){
     if (fs.existsSync(filePath)) {
-        var currentNew = fs.readFileSync(filePath, 'utf8');; // Set initial value
+        var currentNew = fs.readFileSync(filePath, 'utf8'); // Set initial value
         while (currentNew != '' && !fatalError) {
             getFunction(nextOperation(currentNew)['op']);
             currentNew = nextOperation(currentNew)['new'];
@@ -128,16 +131,16 @@ function appendFunction(action, args, returnValue) {
     output = output.slice(0, -1);
     output += ')';
 
-    if (!knownFunctions.includes(action)) {
-        createError('Unknown function: "' + action + '"');
+    if (!knownFunctions.includes(action.charAt(0) === '!' ? action.substring(1) : action)) {
+        createError('Unknown function: "' + action.charAt(0) === '!' ? action.substring(1) : action + '"');
     }
-    if (action == 'log') {
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'log') {
         finalOutput += 'out(' + decodeValue(args[0]) + ');';
     }
-    if (action == 'str') {
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'str') {
         finalOutput += 'numToString(' + decodeValue(args[0]) + ');';
     }
-    if (action == 'def') {
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'def') {
         const validation = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
         if(!validation.test(decodeValue(args[0], true).slice(1, -1))){
             createError('Variable name contains or begins with illegal characters: ' + args[0]);
@@ -154,27 +157,56 @@ function appendFunction(action, args, returnValue) {
             createError('Variable already used: ' + args[0]);
         }
 
+        var identification = 'VARIBALE_' + makeVariableID();
+
         variables.push(
             {
-                name: decodeValue(args[0], true),
-                identification: 'VARIBALE_' + makeVariableID(),
-                type: decodeValue(args[1], true),
+                name: '"'+args[0].slice(1,-1)+'"',
+                identification: identification,
+                type: '"'+args[1].slice(1,-1)+'"',
                 value: decodeValue(args[2], true)
             }
         );
+
+        // We actually set the value here
+        finalOutput += identification + '=' + decodeValue(args[2]) + ';';
     }
-    if (action == 'mod') {
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'mod') {
         var found = false;
         variables.forEach((variable) => {
             if (variable.name == decodeValue(args[0])) {
                 // Modify the variable
-                finalOutput += variable.identification + '=' + args[1] + ';';
+                finalOutput += variable.identification + '=' + decodeValue(args[1]) + ';';
                 found = true;
             }
         })
         if (!found) {
             createError('Variable undefined: ' + args[0]);
         }
+    }
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'if') {
+        finalOutput += 'if(' + decodeValue(args[0]) + '){';
+
+        var iteration = 0;
+        args.forEach(arg => {
+            if(iteration != 0){
+                finalOutput += decodeFunctionCode(arg);
+            }
+            iteration++;
+        });
+        finalOutput += '}';
+    }
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'input') {
+        finalOutput += 'inp();';
+    }
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'num') {
+        finalOutput += 'stringToDouble(' + decodeValue(args[0]) + ');';
+    }
+    if ((action.charAt(0) === '!' ? action.substring(1) : action) == 'vNum') {
+        finalOutput += 'isValidNumber(' + decodeValue(args[0]) + ');';
+    }
+    if(action.charAt(0) === '!' ? action.substring(1) : action != action){ // Has got an ! at the front
+        finalOutput = '!'+finalOutput;
     }
 
     if(!returnValue){
@@ -203,7 +235,7 @@ function functionValidator(operation) {
                     i = operation.length;
                 }
             }
-            if (currentChar != ' ' && currentChar != ')' && openCount == closeCount && openCount != 0) {
+            if (currentChar != ' ' && currentChar != ')' && currentChar != '\n' && currentChar != '\r' && openCount == closeCount && openCount != 0) {
                 createError('Invalid syntax, code after final bracket: ' + operation.trim());
             }
         }
@@ -330,7 +362,7 @@ function getFunctionArgs(string) {
         }
         currentOperation += currentChar;
     }
-    array.push(currentString);
+    array.push(currentString.replace(/\r/g, ''));
     currentString = '';
 
     return array;
@@ -358,10 +390,11 @@ function makeVariableID() {
     }
     return result;
 }
-function decodeValue(value,) {
+function decodeValue(value) {
     if(!value){
         createError('No value set to de-code.');
     }
+    value = value.trim().replace(/\n/g, '').replace(/\r/g, '');
     var finalValue = '';
     var inString = false;
     var currentVar = '';
@@ -470,7 +503,6 @@ function decodeValue(value,) {
         }
 
         // Numbers
-
         // Manage the * symbol
         if(currentChar == '*' && !inFunction && !inString){
             if(type != '"number"' && type != ''){
@@ -749,6 +781,344 @@ function decodeValue(value,) {
 
             currentChar == '';
         }
+        // Manage the || symbol
+        if(currentChar == '|' && optString[i-1] == '|' && !inFunction && !inString){
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '||';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')||';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'||';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+                    type = varType;
+
+                    finalValue += placeName+'||';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the >= symbol
+        if(currentChar == '=' && optString[i-1] == '>' && !inFunction && !inString){ // Remember future me, >=. So this if is actually right even tho it looks wrong
+            if(type != '"number"' && type != ''){
+                createError('Cannot to that for type '+type);
+            }
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '>=';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')>=';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'>=';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+
+                    if(varType != '"number"'){
+                        createError(`Cannot do that for type ${varType}`);
+                    }
+
+                    type = varType;
+
+                    finalValue += placeName+'>=';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the <= symbol
+        if(currentChar == '=' && optString[i-1] == '<' && !inFunction && !inString){ // Remember future me, <=. So this if is actually right even tho it looks wrong
+            if(type != '"number"' && type != ''){
+                createError('Cannot to that for type '+type);
+            }
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '<=';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')<=';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'<=';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+
+                    if(varType != '"number"'){
+                        createError(`Cannot do that for type ${varType}`);
+                    }
+
+                    type = varType;
+
+                    finalValue += placeName+'<=';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the < symbol
+        if(currentChar != '=' && optString[i-1] == '<' && !inFunction && !inString){
+            if(type != '"number"' && type != ''){
+                createError('Cannot to that for type '+type);
+            }
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '<';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')<';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'<';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+
+                    if(varType != '"number"'){
+                        createError(`Cannot do that for type ${varType}`);
+                    }
+
+                    type = varType;
+
+                    finalValue += placeName+'<';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the > symbol
+        if(currentChar != '=' && optString[i-1] == '>' && !inFunction && !inString){
+            if(type != '"number"' && type != ''){
+                createError('Cannot to that for type '+type);
+            }
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '>';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')>';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'>';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+
+                    if(varType != '"number"'){
+                        createError(`Cannot do that for type ${varType}`);
+                    }
+
+                    type = varType;
+
+                    finalValue += placeName+'>';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
+        // Manage the != symbol
+        if(currentChar == '=' && optString[i-1] == '!' && !inFunction && !inString){ // Remember future me, !=. So this if is actually right even tho it looks wrong
+            isConditional = true;
+            if(currentVar == '' && currentNum != ''){ // Not a variable we are trying to deal with
+                // End the variable
+                pastType = 'number';
+
+                finalValue += currentNum;
+
+                if(optString[i+1]){
+                    finalValue += '!=';
+                }
+
+                currentNum = '';
+            }
+
+            if(currentVar != ''){ // We have a current variable
+                // End the variable
+                pastType = 'variable';
+                
+                if(currentVar.includes('(') && currentVar.includes(')')){
+                    // Hang on, this is not a variable, it's a function
+                    if(currentVar.startsWith('(')){ // Is not a function just some code in brackets
+                        finalValue += '('+(decodeValue(getFunction(currentVar, true)[1][0]))+')!=';
+                    } else{
+                        finalValue += appendFunction(getFunction(currentVar, true)[0], getFunction(currentVar, true)[1], true).slice(0 ,-1)+'!=';
+                    }
+                } else{
+                    // Check if the variable is declared
+                    var placeName;
+                    var varType;
+                    variables.forEach(variable => {
+                        if(variable.name == '"'+currentVar+'"'){
+                            placeName = variable.identification;
+                            varType = variable.type;
+                        }
+                    });
+
+                    if(!placeName){
+                        createError('Unknown variable: '+currentVar );
+                    }
+                    type = varType;
+
+                    finalValue += placeName+'!=';
+                }
+            }
+
+            currentVar = '';
+
+            currentChar == '';
+        }
 
 
         function charIsNumber(char){
@@ -779,7 +1149,7 @@ function decodeValue(value,) {
         }
 
         // Variable management
-        if(((!inString && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-' && currentChar != '/' && currentChar != '=' && currentChar != '&') 
+        if(((!inString && currentChar != "'" && currentChar != '' && currentChar != "." && currentChar != '*' && currentChar != '-' && currentChar != '/' && currentChar != '=' && currentChar != '&' && currentChar != '|' && currentChar != '>' && currentChar != '<' && (currentChar != '!' || (optString[i+1] != '=' && optString[i+1] !='>' && optString[i+1] !='<'))) 
         && (!charIsNumber(currentChar) || currentVar != '')) || inFunction){
             // We are in a variable
             currentVar += currentChar;
@@ -909,11 +1279,11 @@ function compile() {
         var made = false;
         const variableType = variable.type.slice(1, -1);
         if (variableType == 'string') {
-            variablesCode += `std::string ${variable.identification}=${variable.value};`;
+            variablesCode += `std::string ${variable.identification}="";`;
             made = true;
         }
         if (variableType == 'number') {
-            variablesCode += `double ${variable.identification}=${variable.value};`;
+            variablesCode += `double ${variable.identification}=0;`;
             made = true;
         }
         if (variableType == 'array') {
@@ -945,11 +1315,15 @@ function compile() {
 #include <sstream>
 #include <iomanip>
 // Logging
-void out(const std::string& message) {std::cout << message;}
-void out(bool value) {std::cout << (value ? "true" : "false");}
-void out(int value) {std::cout << value;}
+template<typename T>
+void out(const T& message){std::ostringstream oss;oss << std::boolalpha << message;std::cout << oss.str();}
+// Input
+std::string inp(){std::string input;std::getline(std::cin, input);return input;}
 // Casting
 std::string numToString(double num) {std::ostringstream oss;oss << std::fixed << std::setprecision(10) << num;std::string input = oss.str();std::string result;for (int i = input.size() - 1; i >= 0; --i) {if (input[i] == '0' || input[i] == '.') {if(input[i] == '.'){result = input.substr(0, i);break; }continue;} else {result = input.substr(0, i + 1);break;}}return result;}
+double stringToDouble(const std::string& str){try {return std::stod(str);}catch (...){return 0;}}
+// Validation
+bool isValidNumber(const std::string& str){std::istringstream iss(str);double value;iss >> std::noskipws >> value;return !iss.fail() && iss.eof();}
 // Variables
 ${variablesCode}
 // Conditions
@@ -1011,4 +1385,14 @@ function fullDir(str) {
         }
     }
     return false;
+}
+function decodeFunctionCode(code){
+    var currentNew = code;
+    var compiledValue = '';
+
+    while (currentNew != '' && !fatalError) {
+        compiledValue += appendFunction(getFunction(nextOperation(currentNew)['op'], true)[0], getFunction(nextOperation(currentNew)['op'], true)[1], true);
+        currentNew = nextOperation(currentNew)['new'];
+    }
+    return compiledValue;
 }

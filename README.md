@@ -75,7 +75,7 @@ log('Hello World!');
 - <b>Variable Name</b>:<br>
 <b>Description:</b> The name of the variable
 <br>
-<b>Data type:</b> [Monotype String](#Language)
+<b>Data type:</b> [Monotype String](/#Language)
 
 - <b>Variable Data Type</b>:<br>
 <b>Description:</b> The data type of the variable, can be 'string' or 'number'

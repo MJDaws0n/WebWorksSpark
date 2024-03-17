@@ -25,5 +25,8 @@ if(!vNum(number1) || !vNum(number2),
 // Log the message to the console
 if(vNum(number1) && vNum(number2),
     // Valid numbers
-   log(number1 + ' + ' + number2 + ' = ' + str(num(number1) + num(number2)))
+   log(number1 + ' + ' + number2 + ' = ' + str(num(number1) + num(number2)) + '\n')
 );
+
+// Allow for the user to close without auto closing. This just makes it so that it will not close immediately
+input();

@@ -47,3 +47,98 @@ For example
 .'.\Example Projects\Number Adder\main.exe'
 ```
 To build the Number Adder example project
+
+# Syntax
+Everything is function based. Like, every single thing.
+
+## log
+<b>Description:</b> Logs a message to the console
+
+
+### Arguments:
+
+- <b>Message</b>:<br>
+<b>Description:</b> The Message to log to the console
+<br>
+<b>Data type:</b> String, Number, Boolean
+
+<b>Example:</b>
+```wss
+log('Hello World!');
+```
+
+## def
+<b>Description:</b> Creates a new variable
+
+
+### Arguments:
+- <b>Variable Name</b>:<br>
+<b>Description:</b> The name of the variable
+<br>
+<b>Data type:</b> Monotype String - String only, must not contain variables or any other type
+
+- <b>Variable Data Type</b>:<br>
+<b>Description:</b> The data type of the variable, can be 'string' or 'number'
+<br>
+<b>Data type:</b> Monotype String - String only, must not contain variables or any other type
+
+- <b>Variable Value</b>:<br>
+<b>Description:</b> The content of the variable
+<br>
+<b>Data type:</b> Must match type of variable
+
+<b>Example:</b>
+```wss
+def('name', 'string', 'John Doe');
+```
+
+## mod
+<b>Description:</b> Modifies an existing variable
+
+
+### Arguments:
+- <b>Variable Name</b>:<br>
+<b>Description:</b> The name of the variable
+<br>
+<b>Data type:</b> Monotype String - String only, must not contain variables or any other type
+
+- <b>New Variable Value</b>:<br>
+<b>Description:</b> The new content of the variable
+<br>
+<b>Data type:</b> Must match type of variable
+
+<b>Example:</b>
+```wss
+mod('name', 'Jane Smith');
+```
+
+
+
+# Language
+## Monotype String
+A Monotype String, is a data type where a string can be placed, but the string cannot include a variable or other function. For example, the following is a Monotype String,
+```wws
+'Hello World'
+```
+However, these are not:
+```wws
+'Hello ' + 'World'
+```
+```wss
+'Hello ' + variable
+```
+```wss
+'Hello ' + myFunction()
+```
+```wss
+15
+```
+```wss
+true
+```
+```wss
+variable
+```
+```wss
+myFunction()
+```

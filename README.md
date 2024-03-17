@@ -75,13 +75,12 @@ log('Hello World!');
 - <b>Variable Name</b>:<br>
 <b>Description:</b> The name of the variable
 <br>
-<b>Data type:</b>
-[Monotype String](https://github.com/MJDaws0n/WebWorksSpark/tree/main?tab=readme-ov-file#monotype-string)
+<b>Data type:</b>Monotype String
 
 - <b>Variable Data Type</b>:<br>
 <b>Description:</b> The data type of the variable, can be 'string' or 'number'
 <br>
-<b>Data type:</b> Monotype String - String only, must not contain variables or any other type
+<b>Data type:</b> Monotype String
 
 - <b>Variable Value</b>:<br>
 <b>Description:</b> The content of the variable

@@ -15,3 +15,35 @@ npm i
 This will require nodeJS and NPM to be installed.
 
 Then, procceed to download mingw from [here](https://winlibs.com/#download-release). Unzip the file and add it to the `./compiler/` folder. Ensure the file is called `mingw64` exactly and inside that folder you can see the `bin` folder.
+
+# How to build
+## Build
+Run this command in a command line to build your programm. The first argument is just to tell nodeJS where the JavaScript file you want to run is. For WebWorks Spark, it's located in the compiler folder. The `WWS FILE LOCATION` should be replaced by the location of your WWS file, and `EXE OUTPUT LOCATION`, should be replaced with where you want to put your exe file.
+```sh
+node .\compiler\app.js '[WSS FILE LOCATION]' '[EXE OUTPUT LOCATION]'
+```
+
+This is an example in what I ran to build the example Number Adder program
+```sh
+node .\compiler\app.js '.\Example Projects\Number Adder\main.wws' '.\Example Projects\Number Adder\main.exe'
+```
+## Debug
+Debug mode will not compile your program to an exe, it will just build it to c++ located in the compiler directory and called `build.cpp`. This is meant if you want to modify or make your own programs outside of WebWorks Spark. It's not really suggested as it's not exactly formatted for people to be able to read it easily.
+```sh
+node .\compiler\app.js '[WSS FILE LOCATION]' '[EXE OUTPUT LOCATION]' debug
+```
+
+# How to run
+Double click the exe file.<br>
+Yeah, it's that easy.
+
+The programm will immediately quit if there is not inputs or long loops, this is just because it quits once it finishes running. To see it in action, add an input at the end of your code, or, open a terminal, and type
+```sh
+.'[EXE LOCATION]'
+```
+
+For example
+```sh
+.'.\Example Projects\Number Adder\main.exe'
+```
+To build the Number Adder example project
